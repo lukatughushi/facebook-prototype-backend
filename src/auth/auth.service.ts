@@ -110,22 +110,32 @@ export class AuthService {
 
   // Step 1 of "Forgot password": creates a 6-digit code valid for 10
   // minutes. There is no mail server, so the code is written to the server
-  // log - and, outside production, returned as `devCode` so the demo UI can
-  // show it. The response never reveals whether the email has an account.
+  // log - and returned as `devCode` so the demo UI can show it. That is on
+  // by default outside production; SHOW_RESET_CODE=true|false overrides it
+  // (e.g. on Render). Anyone who knows an email address can then reset that
+  // account, so admin accounts never get their code exposed. For unknown
+  // emails the response stays generic. While codes are exposed, the code is
+  // the fixed DEMO_RESET_CODE (default 123456) so testers can always use it.
   async forgotPassword(dto: ForgotPasswordDto) {
     const generic = { message: 'If an account exists for this email, we sent a 6-digit code to it.' };
     const email = dto.email.toLowerCase().trim();
     const user = await this.userModel.findOne({ email }).select(RESET_FIELDS);
     if (!user || !user.isActive) return generic;
 
-    const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
+    const flag = this.configService.get<string>('SHOW_RESET_CODE');
+    const exposeCode =
+      (flag ? flag.trim().toLowerCase() === 'true' : this.configService.get('NODE_ENV') !== 'production') &&
+      user.role !== 'admin';
+    const demoCode = this.configService.get<string>('DEMO_RESET_CODE')?.trim();
+    const code = exposeCode
+      ? /^\d{6}$/.test(demoCode || '') ? demoCode! : '123456'
+      : String(randomInt(0, 1_000_000)).padStart(6, '0');
     user.resetCodeHash = sha256(code);
     user.resetCodeExpires = new Date(Date.now() + RESET_CODE_TTL_MS);
     user.resetCodeAttempts = 0;
     await user.save();
 
     this.logger.log(`Password reset code for ${email}: ${code}`);
-    const exposeCode = this.configService.get('NODE_ENV') !== 'production';
     return exposeCode ? { ...generic, devCode: code } : generic;
   }
 
