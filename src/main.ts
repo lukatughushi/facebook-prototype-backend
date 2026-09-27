@@ -22,9 +22,19 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalFilters(new MongooseExceptionFilter());
 
+  // CLIENT_URL is a comma separated list of allowed origins; `*` in an entry
+  // matches letters, digits and dashes (never a dot), so one entry can cover every Vercel preview
+  // deployment, e.g. https://facebook-prototype-frontend*.vercel.app
+  // (A bare `*` origin can't be used: browsers reject it with credentials.)
   const allowedOrigins = (configService.get<string>('CLIENT_URL') || 'http://localhost:5173')
     .split(',')
-    .map((origin) => origin.trim());
+    .map((origin) => origin.trim().replace(/\/+$/, ''))
+    .filter(Boolean)
+    .map((origin) =>
+      origin.includes('*')
+        ? new RegExp(`^${origin.split('*').map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[a-z0-9-]*')}$`, 'i')
+        : origin,
+    );
   app.enableCors({ origin: allowedOrigins, credentials: true });
 
   // Render injects PORT at runtime; 5000 is the local default.
