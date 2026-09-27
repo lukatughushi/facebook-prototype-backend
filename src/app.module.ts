@@ -23,10 +23,19 @@ import { ReportsModule } from './reports/reports.module';
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
+      useFactory: (configService: ConfigService) => {
         // MONGO_URI is the preferred name; MONGODB_URI still works for older .env files.
-        uri: configService.get<string>('MONGO_URI') || configService.get<string>('MONGODB_URI'),
-      }),
+        const uri = configService.get<string>('MONGO_URI') || configService.get<string>('MONGODB_URI');
+        // Atlas' "Connect" dialog hands out URIs without a database path
+        // (".../?retryWrites=true"), which silently connects to an empty "test"
+        // database. Only when the URI names no database, fall back to
+        // MONGO_DB_NAME or the app's own database.
+        const hasDbInUri = /^mongodb(\+srv)?:\/\/[^/]+\/[^/?]+/.test(uri || '');
+        return {
+          uri,
+          ...(hasDbInUri ? {} : { dbName: configService.get<string>('MONGO_DB_NAME') || 'facebook-clone' }),
+        };
+      },
     }),
     UsersModule,
     AuthModule,
