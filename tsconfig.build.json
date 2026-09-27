@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "test",
+    "dist",
+    "**/*spec.ts",
+    "src/seed.ts",
+    "src/database/seed.ts",
+    "src/database/migrate-reactions.ts"
+  ]
+}
