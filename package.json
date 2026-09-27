@@ -10,7 +10,8 @@
     "start:prod": "node dist/main.js",
     "seed": "ts-node -r tsconfig-paths/register src/seed.ts",
     "seed:mock": "ts-node -r tsconfig-paths/register src/database/seed.ts",
-    "migrate:reactions": "ts-node -r tsconfig-paths/register src/database/migrate-reactions.ts"
+    "migrate:reactions": "ts-node -r tsconfig-paths/register src/database/migrate-reactions.ts",
+    "migrate:uploads": "ts-node -r tsconfig-paths/register src/database/migrate-uploads.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.4",

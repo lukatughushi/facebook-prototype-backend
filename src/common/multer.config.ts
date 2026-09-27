@@ -1,24 +1,16 @@
 import { BadRequestException } from '@nestjs/common';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import * as fs from 'fs';
-
-const uploadDir = join(__dirname, '..', '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+import { extname } from 'path';
+import { gridFsStorage } from './gridfs-storage';
 
 const allowedTypes = /jpeg|jpg|png|gif|webp/;
 
 // Shared multer options for every image-upload endpoint (avatars, cover
-// photos, post images): disk storage under /uploads, 5MB cap, image-only.
+// photos, post images): stored in MongoDB GridFS and served at
+// /uploads/<filename>, 5MB cap, image-only.
 export const multerOptions = {
-  storage: diskStorage({
-    destination: uploadDir,
-    filename: (req, file, cb) => {
-      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `${file.fieldname}-${uniqueSuffix}${extname(file.originalname)}`);
-    },
+  storage: gridFsStorage((file) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    return `${file.fieldname}-${uniqueSuffix}${extname(file.originalname).toLowerCase()}`;
   }),
   fileFilter: (req: any, file: Express.Multer.File, cb: (error: Error | null, acceptFile: boolean) => void) => {
     const extOk = allowedTypes.test(extname(file.originalname).toLowerCase());

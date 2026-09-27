@@ -5,7 +5,10 @@ import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
+import { getConnectionToken } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { AppModule } from './app.module';
+import { initUploadBucket, serveUpload } from './common/gridfs-storage';
 import { MongooseExceptionFilter } from './common/filters/mongoose-exception.filter';
 
 async function bootstrap() {
@@ -16,7 +19,11 @@ async function bootstrap() {
 
   // Serve uploaded images statically at /uploads (outside the /api prefix,
   // matching the paths stored on User/Post documents e.g. "/uploads/x.png").
+  // New uploads are stored in MongoDB (GridFS) - see common/gridfs-storage.ts.
+  // Files still on local disk (older dev uploads) are served first.
+  initUploadBucket(app.get<Connection>(getConnectionToken()));
   app.useStaticAssets(join(__dirname, '..', 'uploads'), { prefix: '/uploads/' });
+  app.use('/uploads', serveUpload);
 
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
